@@ -43,10 +43,12 @@ module.exports = {
     });
 
     this._page = page;
+    this._menuOrganizer = startModelMenuOrganizer(api);
   },
 
   stop() {
     this._page?.unregister?.();
+    this._menuOrganizer?.dispose?.();
   },
 };
 
@@ -186,6 +188,90 @@ function modelRow(api, model) {
 
   row.append(left, button);
   return row;
+}
+
+function startModelMenuOrganizer(api) {
+  const run = () => {
+    try {
+      organizeModelMenus();
+    } catch (error) {
+      api.log.warn("model menu organizer failed", error?.message || error);
+    }
+  };
+
+  const observer = new MutationObserver(run);
+  observer.observe(document.body, { childList: true, subtree: true });
+  run();
+
+  return {
+    dispose() {
+      observer.disconnect();
+    },
+  };
+}
+
+function organizeModelMenus() {
+  const menus = Array.from(document.querySelectorAll('[role="menu"], [role="listbox"]'));
+  for (const menu of menus) {
+    const text = normalizedText(menu);
+    if (!MODELS.every((model) => text.includes(model.name))) continue;
+    if (!text.includes("GPT-5.5")) continue;
+    organizeMenu(menu);
+  }
+}
+
+function organizeMenu(menu) {
+  unwrapLegacyGroup(menu);
+  const modelItems = MODELS.map((model) => findMenuItem(menu, model.name)).filter(Boolean);
+  const firstOpenAiItem = findMenuItem(menu, "GPT-5.5");
+  if (!modelItems.length || !firstOpenAiItem) return;
+
+  let label = menu.querySelector('[data-kosta-vibeproxy-model-label="true"]');
+  if (!label) {
+    label = document.createElement("div");
+    label.dataset.kostaVibeproxyModelLabel = "true";
+    label.className =
+      "px-3 pb-1 pt-2 text-xs font-medium uppercase tracking-normal text-token-text-tertiary";
+    label.textContent = "VibeProxy";
+  }
+
+  if (label.parentElement !== menu || isAfter(label, firstOpenAiItem)) {
+    menu.insertBefore(label, firstOpenAiItem);
+  }
+
+  let cursor = label;
+  for (const item of modelItems) {
+    if (item.previousElementSibling === cursor) {
+      cursor = item;
+      continue;
+    }
+    menu.insertBefore(item, cursor.nextSibling);
+    cursor = item;
+  }
+}
+
+function unwrapLegacyGroup(menu) {
+  const group = menu.querySelector('[data-kosta-vibeproxy-model-group="true"]');
+  if (!group) return;
+  while (group.firstChild) {
+    menu.insertBefore(group.firstChild, group);
+  }
+  group.remove();
+}
+
+function findMenuItem(menu, label) {
+  const candidates = Array.from(
+    menu.querySelectorAll('[role="menuitem"], [role="option"], button, [data-radix-collection-item]'),
+  );
+  return candidates.find((node) => normalizedText(node) === label) || null;
+}
+
+function normalizedText(node) {
+  return (node.textContent || "").replace(/\s+/g, " ").trim();
+}
+
+function isAfter(a, b) {
+  return Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_PRECEDING);
 }
 
 function statusLine(label, ok) {
