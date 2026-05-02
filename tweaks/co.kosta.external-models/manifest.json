@@ -1,0 +1,19 @@
+{
+  "id": "co.kosta.external-models",
+  "name": "External Models",
+  "version": "0.1.0",
+  "githubRepo": "ildunari/codex-plusplus",
+  "description": "Expose Kosta's VibeProxy GLM bridge and external model helpers inside Codex.",
+  "author": {
+    "name": "Kosta",
+    "url": "https://github.com/ildunari/codex-plusplus"
+  },
+  "tags": [
+    "models",
+    "providers",
+    "glm",
+    "vibeproxy"
+  ],
+  "scope": "both",
+  "main": "index.js"
+}
